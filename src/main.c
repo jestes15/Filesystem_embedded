@@ -11,6 +11,8 @@ int main()
         return EXIT_FAILURE;
     }
 
+    __write_file("post_initialization.bin");
+
     char *data_1 = "Hello, world!";
     char *data_2 = "Hselo, wonau!";
 
@@ -20,7 +22,7 @@ int main()
     file_write(file_1);
     file_write(file_2);
 
-    __write_file();
+    __write_file("post_filewrite.bin");
 
     print_disk();
 

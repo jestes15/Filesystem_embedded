@@ -6,34 +6,25 @@ struct disk
     uint64_t empty_section_start;
 } disk;
 
-void __write_file()
+void __write_file(const char *restrict filename)
 {
-    FILE *fp = fopen("filename.bin", "wb");
+    FILE *fp = fopen(filename, "wb");
     if (fp == NULL)
     {
         printf("Error: Could not open file.\n");
         return;
     }
 
-    for (int i = 0; i < VOLUME_SIZE; i++)
-    {
-        fwrite(&disk.disk_volume[i], sizeof(uint8_t), 1, fp);
-    }
-
+    fwrite(disk.disk_volume, sizeof(uint8_t), VOLUME_SIZE, fp);
     fclose(fp);
 }
 
 void print_disk()
 {
-    printf("disk.empty_section_start: %ld\n", disk.empty_section_start);
-
     uint64_t current_ptr = 0;
     while (current_ptr < disk.empty_section_start)
     {
         char filename[NAME_SIZE] = {0};
-
-        printf("current_ptr: %ld\n", current_ptr);
-
         printf("File Name:\n");
         for (int i = 0; i < NAME_SIZE; i++)
         {
@@ -53,10 +44,11 @@ void print_disk()
                 file_size |= ((uint64_t)disk.disk_volume[current_ptr + NAME_SIZE + i]) << (8 * i);
         }
         printf("(%ld)\n", file_size);
-        char * file_data = (char *)malloc(file_size * sizeof(char));
+        char *file_data = (char *)malloc(file_size * sizeof(char));
 
         printf("File Data:\n");
-        for (int i = 0; i < file_size - 1; i++) {
+        for (int i = 0; i < file_size - 1; i++)
+        {
             file_data[i] = disk.disk_volume[current_ptr + NAME_SIZE + 8 + i];
             printf("%02X ", disk.disk_volume[current_ptr + NAME_SIZE + 8 + i]);
         }
@@ -111,7 +103,11 @@ void file_write(struct file *file)
     uint8_t *file_size = (uint8_t *)&file->size;
 
     for (int i = 0; i < NAME_SIZE; i++)
+    {
         disk.disk_volume[disk.empty_section_start + i] = file->name[i];
+        printf("%02X ", file->name[i]);
+    }
+    printf("\n");
 
     disk.empty_section_start += NAME_SIZE;
 
@@ -136,7 +132,7 @@ uint8_t __initialize_filesystem()
         return 1;
     }
 
-    void *ret = memset(disk.disk_volume, 0xFF, VOLUME_SIZE * sizeof(uint8_t));
+    void *ret = memset(disk.disk_volume, 0x00, VOLUME_SIZE * sizeof(uint8_t));
 
     if ((uint8_t *)ret != disk.disk_volume)
     {

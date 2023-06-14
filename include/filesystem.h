@@ -16,7 +16,7 @@
 
 struct file
 {
-    char name[128];
+    char name[NAME_SIZE];
     uint64_t size;
     uint8_t *data;
 };
@@ -33,4 +33,4 @@ void file_defrag();
 uint8_t __initialize_filesystem();
 void __destroy_filesystem();
 bool __is_little_endian();
-void __write_file();
+void __write_file(const char *restrict filename);
