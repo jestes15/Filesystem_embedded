@@ -22,12 +22,14 @@ struct file
 };
 
 void print_disk();
-struct file *file_create(char *name, int size, uint8_t *data);
+void print_file(struct file *file);
+
+struct file *file_create(char *restrict name, int size, uint8_t *restrict data);
 void file_write(struct file *file);
 
-struct file *file_find(char *name);
-struct file* file_read(char* name);
-void file_destroy(struct file *file);
+int64_t file_find(char * restrict name);
+struct file* file_read(char *restrict name);
+void file_destroy(char *restrict name);
 void file_defrag();
 
 uint8_t __initialize_filesystem();

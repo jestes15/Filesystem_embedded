@@ -26,28 +26,17 @@ int main()
 
     print_disk();
 
+    int64_t file_3 = file_find("test345.txt");
+
+    if (file_3 == -1) {
+        printf("Error: Could not find file.\n");
+        __destroy_filesystem();
+        return EXIT_FAILURE;
+    }
+
+    // print_file(file_3);
+
     __destroy_filesystem();
 
     return EXIT_SUCCESS;
-}
-
-void test()
-{
-    uint64_t number = __builtin_bswap64(0x123456789ABCDEF0);
-    uint64_t number_copy = 0;
-    uint8_t *number_bytes = (uint8_t *)&number;
-
-    if (__is_little_endian())
-    {
-        for (int i = 0; i < 8; i++)
-            number_copy |= ((uint64_t)number_bytes[i]) << (8 * (7 - i));
-    }
-    else
-    {
-        for (int i = 0; i < 8; i++)
-            number_copy |= ((uint64_t)number_bytes[i]) << (8 * i);
-    }
-
-    printf("%lX ", number_copy);
-    printf("\n");
 }
