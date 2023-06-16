@@ -36,3 +36,4 @@ uint8_t __initialize_filesystem();
 void __destroy_filesystem();
 bool __is_little_endian();
 void __write_file(const char *filename);
+uint8_t __add_file_record_to_mft(struct file_record *file_record);

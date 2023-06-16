@@ -1,22 +1,40 @@
 #include "filesystem.h"
 
+struct file_record {
+    char name[NAME_SIZE];
+    uint64_t size;
+    uint64_t offset;
+};
+
 struct disk
 {
     uint8_t *disk_volume;
     uint64_t empty_section_start;
+
+    uint64_t master_file_table_size;
+    struct file_record *master_file_table;
 } disk;
 
-void __write_file(const char *filename)
+uint8_t __add_file_record_to_mft(struct file_record *file_record)
 {
-    FILE *fp = fopen(filename, "wb");
-    if (fp == NULL)
+    struct file_record *new_mft = (struct file_record *)malloc(sizeof(struct file_record) * (disk.master_file_table_size + 1));
+    if (new_mft == NULL)
     {
-        printf("Error: Could not open file.\n");
-        return;
+        printf("Error: Could not allocate memory for master file table.\n");
+        return 1;
     }
 
-    fwrite(disk.disk_volume, sizeof(uint8_t), VOLUME_SIZE, fp);
-    fclose(fp);
+    void *ret = memcpy(new_mft, disk.master_file_table, sizeof(struct file_record) * disk.master_file_table_size);
+    if ((struct file_record *)ret != new_mft)
+    {
+        printf("Error: Could not copy master file table.\n");
+        return 2;
+    }
+
+    new_mft[disk.master_file_table_size] = *file_record;
+    disk.master_file_table_size++;
+
+    return 0;
 }
 
 void print_disk()
@@ -24,12 +42,11 @@ void print_disk()
     uint64_t current_ptr = 0;
     while (current_ptr < disk.empty_section_start)
     {
-        int i;
         uint64_t file_size = 0;
         char filename[NAME_SIZE] = {0};
 
         printf("File Name:\n");
-        for (i = 0; i < NAME_SIZE; i++)
+        for (int i = 0; i < NAME_SIZE; i++)
         {
             printf("%02X ", disk.disk_volume[i + current_ptr]);
             filename[i] = disk.disk_volume[i + current_ptr];
@@ -37,7 +54,7 @@ void print_disk()
         printf("(%s)\n", filename);
 
         printf("File Size:\n");
-        for (i = 0; i < 8; i++)
+        for (int i = 0; i < 8; i++)
         {
             printf("%02X ", disk.disk_volume[current_ptr + NAME_SIZE + i]);
             file_size |= ((uint64_t)disk.disk_volume[current_ptr + NAME_SIZE + i]) << (8 * i);
@@ -46,7 +63,7 @@ void print_disk()
         char *file_data = (char *)malloc(file_size * sizeof(char));
 
         printf("File Data:\n");
-        for (i = 0; i < file_size - 1; i++)
+        for (int i = 0; i < file_size - 1; i++)
         {
             file_data[i] = disk.disk_volume[current_ptr + NAME_SIZE + 8 + i];
             printf("%02X ", disk.disk_volume[current_ptr + NAME_SIZE + 8 + i]);
@@ -59,20 +76,18 @@ void print_disk()
 
 void print_file(struct file *file)
 {
-    int i;
-
     printf("File Name:\n");
-    for (i = 0; i < NAME_SIZE; i++)
+    for (int i = 0; i < NAME_SIZE; i++)
         printf("%02X ", file->name[i]);
     printf("(%s)\n", file->name);
 
     printf("File Size:\n");
-    for (i = 0; i < 8; i++)
+    for (int i = 0; i < 8; i++)
         printf("%02X ", ((uint8_t *)&file->size)[i]);
     printf("(%ld)\n", file->size);
 
     printf("File Data:\n");
-    for (i = 0; i < file->size - 1; i++)
+    for (int i = 0; i < file->size - 1; i++)
         printf("%02X ", file->data[i]);
     printf("(%s)\n", file->data);
 }
@@ -119,20 +134,19 @@ struct file *file_create(char *name, int size, uint8_t *data)
 
 void file_write(struct file *file)
 {
-    int i;
     uint8_t *file_size = (uint8_t *)&file->size;
 
-    for (i = 0; i < NAME_SIZE; i++)
+    for (int i = 0; i < NAME_SIZE; i++)
         disk.disk_volume[disk.empty_section_start + i] = file->name[i];
 
     disk.empty_section_start += NAME_SIZE;
 
-    for (i = 0; i < 8; i++)
+    for (int i = 0; i < 8; i++)
         disk.disk_volume[disk.empty_section_start + i] = file_size[i];
 
     disk.empty_section_start += 8;
 
-    for (i = 0; i < file->size - 1; i++)
+    for (int i = 0; i < file->size - 1; i++)
         disk.disk_volume[disk.empty_section_start + i] = file->data[i];
 
     disk.empty_section_start += file->size - 1;
@@ -140,12 +154,11 @@ void file_write(struct file *file)
 
 int64_t file_find(char *name)
 {
-    int i;
     int64_t current_ptr = 0;
     while (current_ptr < disk.empty_section_start)
     {
         char filename[NAME_SIZE] = {0};
-        for (i = 0; i < NAME_SIZE; i++)
+        for (int i = 0; i < NAME_SIZE; i++)
         {
             filename[i] = disk.disk_volume[i + current_ptr];
         }
@@ -156,7 +169,7 @@ int64_t file_find(char *name)
         }
 
         uint64_t file_size = 0;
-        for (i = 0; i < 8; i++)
+        for (int i = 0; i < 8; i++)
             file_size |= ((uint64_t)disk.disk_volume[current_ptr + NAME_SIZE + i]) << (8 * i);
 
         current_ptr += NAME_SIZE + 8 + file_size - 1;
@@ -169,9 +182,8 @@ struct file *file_read(char *name)
     uint64_t current_ptr = 0;
     while (current_ptr < disk.empty_section_start)
     {
-        int i;
         char filename[NAME_SIZE] = {0};
-        for (i = 0; i < NAME_SIZE; i++)
+        for (int i = 0; i < NAME_SIZE; i++)
         {
             filename[i] = disk.disk_volume[i + current_ptr];
         }
@@ -179,12 +191,12 @@ struct file *file_read(char *name)
         if (strcmp(filename, name) == 0)
         {
             uint64_t file_size = 0;
-            for (i = 0; i < 8; i++)
+            for (int i = 0; i < 8; i++)
             {
                 file_size |= ((uint64_t)disk.disk_volume[current_ptr + NAME_SIZE + i]) << (8 * i);
             }
             char *file_data = (char *)malloc(file_size * sizeof(char));
-            for (i = 0; i < file_size - 1; i++)
+            for (int i = 0; i < file_size - 1; i++)
             {
                 file_data[i] = disk.disk_volume[current_ptr + NAME_SIZE + 8 + i];
             }
@@ -206,7 +218,6 @@ void file_destroy(char *name)
     memset(disk.disk_volume + offset, 0x00, NAME_SIZE + 8 + file_size - 1);
 }
 
-// Not implemented in this version
 void file_defrag()
 {
 }
@@ -240,4 +251,41 @@ bool __is_little_endian()
 {
     volatile uint32_t i = 0x01234567;
     return (*((uint8_t *)(&i))) == 0x67;
+}
+
+void __write_file(const char *filename)
+{
+    FILE *fp = fopen(filename, "wb");
+    if (fp == NULL)
+    {
+        printf("Error: Could not open file.\n");
+        return;
+    }
+
+    fwrite(disk.disk_volume, sizeof(uint8_t), VOLUME_SIZE, fp);
+
+    fclose(fp);
+}
+
+uint8_t __add_file_record_to_mft(struct file_record *file_record)
+{
+    struct file_record *new_mft =
+        (struct file_record *)malloc(sizeof(struct file_record) * (disk.master_file_table_size + 1));
+    if (new_mft == NULL)
+    {
+        printf("Error: Could not allocate memory for master file table.\n");
+        return 1;
+    }
+
+    void *ret = memcpy(new_mft, disk.master_file_table, sizeof(struct file_record) * disk.master_file_table_size);
+    if ((struct file_record *)ret != new_mft)
+    {
+        printf("Error: Could not copy master file table.\n");
+        return 2;
+    }
+
+    new_mft[disk.master_file_table_size] = *file_record;
+    disk.master_file_table_size++;
+
+    return 0;
 }
