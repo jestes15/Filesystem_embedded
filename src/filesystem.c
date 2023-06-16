@@ -77,7 +77,7 @@ void print_file(struct file *file)
     printf("(%s)\n", file->data);
 }
 
-struct file *file_create(char * name, int size, uint8_t * data)
+struct file *file_create(char *name, int size, uint8_t *data)
 {
     struct file *file = (struct file *)malloc(sizeof(struct file));
 
@@ -138,7 +138,7 @@ void file_write(struct file *file)
     disk.empty_section_start += file->size - 1;
 }
 
-int64_t file_find(char * name)
+int64_t file_find(char *name)
 {
     int i;
     int64_t current_ptr = 0;
@@ -164,7 +164,7 @@ int64_t file_find(char * name)
     return -1;
 }
 
-struct file *file_read(char * name)
+struct file *file_read(char *name)
 {
     uint64_t current_ptr = 0;
     while (current_ptr < disk.empty_section_start)
@@ -194,12 +194,21 @@ struct file *file_read(char * name)
     return NULL;
 }
 
-void file_destroy(char * name)
+void file_destroy(char *name)
 {
-    uint64_t file = file_find(name);
+    int i;
+    uint64_t offset = file_find(name);
+    uint64_t file_size = 0;
 
-    // for (int i = 0; i < 8; i++)
-    // file_size |= ((uint64_t)disk.disk_volume[file + NAME_SIZE + i]) << (8 * i);
+    for (i = 0; i < 8; i++)
+        file_size |= ((uint64_t)disk.disk_volume[offset + NAME_SIZE + i]) << (8 * i);
+
+    memset(disk.disk_volume + offset, 0x00, NAME_SIZE + 8 + file_size - 1);
+}
+
+// Not implemented in this version
+void file_defrag()
+{
 }
 
 uint8_t __initialize_filesystem()

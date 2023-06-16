@@ -13,28 +13,20 @@ int main()
 
     __write_file("post_initialization.bin");
 
-    char *data_1 = "Hello, world!";
-    char *data_2 = "Hselo, wonau!";
+    char data_1[] = "Hello, World!";
+    char data_2[] = "This is a test.";
 
-    struct file *file_1 = file_create("test.txt", 15, data_1);
-    struct file *file_2 = file_create("test345.txt", 15, data_2);
+    struct file *file_1 = file_create("test1.txt", sizeof(data_1), data_1);
+    struct file *file_2 = file_create("test2.txt", sizeof(data_2), data_2);
 
     file_write(file_1);
     file_write(file_2);
 
     __write_file("post_filewrite.bin");
 
-    print_disk();
+    file_destroy("test1.txt");
 
-    int64_t file_3 = file_find("test345.txt");
-
-    if (file_3 == -1) {
-        printf("Error: Could not find file.\n");
-        __destroy_filesystem();
-        return EXIT_FAILURE;
-    }
-
-    // print_file(file_3);
+    __write_file("post_filedestroy.bin");
 
     __destroy_filesystem();
 
