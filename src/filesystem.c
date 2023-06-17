@@ -1,11 +1,5 @@
 #include "filesystem.h"
 
-struct file_record {
-    char name[NAME_SIZE];
-    uint64_t size;
-    uint64_t offset;
-};
-
 struct disk
 {
     uint8_t *disk_volume;
@@ -14,28 +8,6 @@ struct disk
     uint64_t master_file_table_size;
     struct file_record *master_file_table;
 } disk;
-
-uint8_t __add_file_record_to_mft(struct file_record *file_record)
-{
-    struct file_record *new_mft = (struct file_record *)malloc(sizeof(struct file_record) * (disk.master_file_table_size + 1));
-    if (new_mft == NULL)
-    {
-        printf("Error: Could not allocate memory for master file table.\n");
-        return 1;
-    }
-
-    void *ret = memcpy(new_mft, disk.master_file_table, sizeof(struct file_record) * disk.master_file_table_size);
-    if ((struct file_record *)ret != new_mft)
-    {
-        printf("Error: Could not copy master file table.\n");
-        return 2;
-    }
-
-    new_mft[disk.master_file_table_size] = *file_record;
-    disk.master_file_table_size++;
-
-    return 0;
-}
 
 void print_disk()
 {
@@ -110,24 +82,7 @@ struct file *file_create(char *name, int size, uint8_t *data)
 
     strcpy(file->name, name);
     file->size = size;
-    file->data = (uint8_t *)malloc(size * sizeof(uint8_t));
-
-    if (file->data == NULL)
-    {
-        printf("Error: Could not allocate memory for file data.\n");
-        return NULL;
-    }
-
-    if (data != NULL)
-    {
-        void *ret = memcpy(file->data, data, size * sizeof(uint8_t));
-
-        if ((uint8_t *)ret != file->data)
-        {
-            printf("Error: Could not copy file data.\n");
-            return NULL;
-        }
-    }
+    file->data = data;
 
     return file;
 }
@@ -245,6 +200,7 @@ uint8_t __initialize_filesystem()
 void __destroy_filesystem()
 {
     free(disk.disk_volume);
+    free(disk.master_file_table);
 }
 
 bool __is_little_endian()
@@ -267,6 +223,23 @@ void __write_file(const char *filename)
     fclose(fp);
 }
 
+struct file_record* __create_file_record(struct file * new_file)
+{
+    struct file_record *file_record = (struct file_record *)malloc(sizeof(struct file_record));
+
+    if (file_record == NULL)
+    {
+        printf("Error: Could not allocate memory for file record.\n");
+        return NULL;
+    }
+
+    strcpy(file_record->name, new_file->name);
+    file_record->size = NAME_SIZE + 8 + new_file->size - 1;
+    file_record->location = disk.empty_section_start;
+
+    return file_record;
+}
+
 uint8_t __add_file_record_to_mft(struct file_record *file_record)
 {
     struct file_record *new_mft =
@@ -286,6 +259,9 @@ uint8_t __add_file_record_to_mft(struct file_record *file_record)
 
     new_mft[disk.master_file_table_size] = *file_record;
     disk.master_file_table_size++;
+
+    free(disk.master_file_table);
+    disk.master_file_table = new_mft;
 
     return 0;
 }

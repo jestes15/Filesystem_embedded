@@ -10,23 +10,15 @@ int main()
         printf("Error: Could not initialize filesystem.\n");
         return EXIT_FAILURE;
     }
+    
+    struct file * file = file_create("test.txt", 13, "Hello world");
+    struct file_record* file_rec = __create_file_record(file);
 
-    __write_file("post_initialization.bin");
+    free(file);
 
-    char data_1[] = "Hello, World!";
-    char data_2[] = "This is a test.";
+    __add_file_record_to_mft(file_rec);
 
-    struct file *file_1 = file_create("test1.txt", sizeof(data_1), data_1);
-    struct file *file_2 = file_create("test2.txt", sizeof(data_2), data_2);
-
-    file_write(file_1);
-    file_write(file_2);
-
-    __write_file("post_filewrite.bin");
-
-    file_destroy("test1.txt");
-
-    __write_file("post_filedestroy.bin");
+    free(file_rec);
 
     __destroy_filesystem();
 

@@ -21,6 +21,13 @@ struct file
     uint8_t *data;
 };
 
+struct file_record
+{
+    char name[NAME_SIZE];
+    uint64_t size;
+    uint64_t location;
+};
+
 void print_disk();
 void print_file(struct file *file);
 
@@ -37,3 +44,4 @@ void __destroy_filesystem();
 bool __is_little_endian();
 void __write_file(const char *filename);
 uint8_t __add_file_record_to_mft(struct file_record *file_record);
+struct file_record *__create_file_record(struct file *new_file);
