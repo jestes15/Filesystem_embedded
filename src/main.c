@@ -1,5 +1,4 @@
 #include "filesystem.h"
-#include <immintrin.h>
 
 int main()
 {
